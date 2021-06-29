@@ -1,17 +1,14 @@
-#!/urs/bin/env python3
+#!/usr/bin/env python3
 # type: ignore
-"""Cheat sheet for Toki Pona, using the nimi ale pona table.
+"""Cheat sheet for Toki Pona, using the nimi ale pona table. License WTFPLv2.
 
-You need a CSV export of the nimi ale pona (inli). It can be downloaded from:
+You need a CSV export of the nimi ale pona (inli). Place it in the path stored
+in the CSV variable below, or change that variable to suit your needs. It can be
+downloaded from the following link:
 https://docs.google.com/spreadsheets/d/1t-pjAgZDyKPXcCRnEdATFQOxGbQFMjZm-8EvXiQd2Po/edit#gid=0
-
-Place it in the path stored in the CSV variable below, or change that variable
-to suit your needs :)
 
 If colorama is installed on your system (it often is for some reason), the
 output will be colored; else it will still properly display text.
-
-2021 - License: WTFPLv2 - pona tawa sina!
 """
 
 import argparse
