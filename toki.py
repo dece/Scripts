@@ -64,10 +64,10 @@ def print_row(row):
     if etymology:
         details += ": " + etymology
     print(f"  {Style.DIM}{details}{Style.RESET_ALL}")
-    if row['tags']:
-        print(f"  {Style.DIM}{row['tags']}{Style.RESET_ALL}")
-    if row['']:  # bogus second tag columns
-        print(f"  {Style.DIM}{row['']}{Style.RESET_ALL}")
+    if (tags := row['tags']):
+        print(f"  {Style.DIM}tags: {tags}{Style.RESET_ALL}")
+    if (origin := row['creator(s)']):
+        print(f"  {Style.DIM}origin: {origin}{Style.RESET_ALL}")
 
 if __name__ == "__main__":
     main()
