@@ -20,9 +20,11 @@ from shutil import which
 import requests
 from bs4 import BeautifulSoup, NavigableString
 
+
 class DummyColorama:
     def __getattr__(self, _):
         return ""
+
 
 HAS_COLORAMA = True
 Fore = None
@@ -39,11 +41,13 @@ URL = "https://www.wordreference.com"
 
 MeaningType = enum.Enum("MeaningType", "MAIN ADD COMPOUND")
 
+
 @dataclasses.dataclass
 class Translation:
     desc: str
     nature: str
     precision: str = ""
+
 
 @dataclasses.dataclass
 class Meaning:
@@ -54,6 +58,7 @@ class Meaning:
     desc: list[str] = dataclasses.field(default_factory=list)
     ex: list[str] = dataclasses.field(default_factory=list)
     trans: list[Translation] = dataclasses.field(default_factory=list)
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -81,6 +86,7 @@ def main():
         get_suggestions(lang, words)
     else:
         get_translations(lang, words)
+
 
 def get_translations(lang, words):
     """Get translations for these words."""
@@ -116,8 +122,9 @@ def get_translations(lang, words):
     for meaning in meanings:
         print_meaning(meaning)
 
+
 def parse_rows(table, meanings, mtype):
-    """Parse all meaningful rows of this table and store results in meanings."""
+    """Parse all good rows of this table and store results in meanings."""
     meaning = None
     for row in table.find_all("tr"):
         # Discard rows that aren't meanings.
@@ -126,57 +133,67 @@ def parse_rows(table, meanings, mtype):
             continue
 
         # New meaning start with a row that has an ID.
-        new_meaning_row = False
+        is_new_meaning_row = False
         if (meaning_id := row.get("id")):
             if meaning:
                 meanings.append(meaning)
             meaning = Meaning(ident=meaning_id, mtype=mtype)
-            new_meaning_row = True
+            is_new_meaning_row = True
 
         cells = row.find_all("td")
 
         # Rows with 3 cells are definitions or complementary meanings.
         if len(cells) == 3:
-            lcell, ccell, rcell = cells
-
-            # For new meanings, use the left cell info.
-            if new_meaning_row:
-                meaning.original = lcell.strong.text
-                if (nature_elements := lcell.em.contents):
-                    meaning.nature = nature_elements[0]
-
-            # Each 3-cell row is a translation.
-            trans_desc = []
-            for content in rcell.contents:
-                if isinstance(content, NavigableString):
-                    trans_desc.append(content.strip())
-                elif "POS2" not in (content.get("class") or []):
-                    trans_desc.append(content.text)
-            translation = Translation(
-                desc=" ".join(trans_desc),
-                nature=rcell.contents[-1].contents[0],
-            )
-
-            # Center cell mixes original description and translation info…
-            for child in ccell.children:
-                # "dsense" classes are for this specific translation,
-                # not the current "row-group" meaning.
-                if not isinstance(child, NavigableString):
-                    if "dsense" in (child.get("class") or []):
-                        translation.precision += child.text
-                    elif (text := child.text.strip()):
-                        meaning.desc.append(text)
-                elif (text := str(child).strip()):
-                    meaning.desc.append(text)
-            meaning.trans.append(translation)
-
+            parse_common_cells(cells, meaning, is_new_meaning_row)
         # Rows with 2 cells are examples.
         else:
-            example_cell = cells[-1]
-            meaning.ex.append(example_cell.span.text)
+            parse_example_cells(cells, meaning)
 
     if meaning:
         meanings.append(meaning)
+
+
+def parse_common_cells(cells, meaning, is_new_meaning):
+    """Parse common cells: meaning, definition, translations, etc."""
+    lcell, ccell, rcell = cells
+
+    # For new meanings, use the left cell info.
+    if is_new_meaning:
+        meaning.original = lcell.strong.text
+        if (nature_elements := lcell.em.contents):
+            meaning.nature = nature_elements[0]
+
+    # Each 3-cell row is a translation.
+    trans_desc = []
+    for content in rcell.contents:
+        if isinstance(content, NavigableString):
+            trans_desc.append(content.strip())
+        elif "POS2" not in (content.get("class") or []):
+            trans_desc.append(content.text)
+    nature = ""
+    if (nature_content := rcell.contents[-1]):
+        if len(nature_content):
+            nature = nature_content.contents[0]
+    translation = Translation(desc=" ".join(trans_desc), nature=nature)
+
+    # Center cell mixes original description and translation info…
+    for child in ccell.children:
+        # "dsense" classes are for this specific translation,
+        # not the current "row-group" meaning.
+        if not isinstance(child, NavigableString):
+            if "dsense" in (child.get("class") or []):
+                translation.precision += child.text
+            elif (text := child.text.strip()):
+                meaning.desc.append(text)
+        elif (text := str(child).strip()):
+            meaning.desc.append(text)
+    meaning.trans.append(translation)
+
+
+def parse_example_cells(cells, meaning):
+    """Parse cells of an example line (pretty much just the last one)."""
+    meaning.ex.append(cells[-1].span.text)
+
 
 def print_meaning(meaning):
     """Print a few formatted lines for this meaning."""
@@ -197,14 +214,19 @@ def print_meaning(meaning):
     print(first_line)
     # Each translation is on its own line.
     for trans in meaning.trans:
-        print(
-            f"— {trans.desc} " +
-            f"{Style.DIM}({trans.nature}) {trans.precision}{Style.NORMAL}")
+        trans_line = f"— {trans.desc}"
+        if trans.nature:
+            trans_line += f" {Style.DIM}({trans.nature}){Style.NORMAL}"
+        if trans.precision:
+            trans_line += f" {Style.DIM}{trans.precision}{Style.NORMAL}"
+        print(trans_line)
     # Show examples on different, dimmed line.
     for example in meaning.ex:
         print(f"  {Style.DIM}e.g. {example}{Style.NORMAL}")
 
+
 AUTOCOMP_URL = f"{URL}/2012/autocomplete/autocomplete.aspx"
+
 
 def get_suggestions(lang, words):
     """Show completion suggestions for these words."""
