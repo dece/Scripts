@@ -11,7 +11,7 @@ UCD="$HOME/.local/share/emoji/ucd.all.flat.zip"
 GREP="rg"
 
 usage() {
-    echo "usage: $0 [-n] [-l LIMIT] FILTER"
+    echo "Usage: $0 [OPTION]... FILTER"
     echo "Display emojis based on the name filter provided."
     echo "  -h        show usage"
     echo "  -n        hide emoji name"
