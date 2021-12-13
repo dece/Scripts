@@ -192,7 +192,9 @@ def parse_common_cells(cells, meaning, is_new_meaning):
 
 def parse_example_cells(cells, meaning):
     """Parse cells of an example line (pretty much just the last one)."""
-    meaning.ex.append(cells[-1].span.text)
+    last_cell = cells[-1]
+    if (span := last_cell.span):
+        meaning.ex.append(span.text)
 
 
 def print_meaning(meaning):
