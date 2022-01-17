@@ -71,13 +71,13 @@ def main():
     args = ap.parse_args()
 
     global Fore, Style
-    if args.no_color and HAS_COLORAMA:
-        Fore = DummyColorama()
-        Style = DummyColorama()
-    else:
+    if HAS_COLORAMA and not args.no_color:
         Fore = colorama.Fore
         Style = colorama.Style
         colorama.init()
+    else:
+        Fore = DummyColorama()
+        Style = DummyColorama()
 
     lang = args.lang
     words = " ".join(args.words)
