@@ -31,10 +31,14 @@ check_cheat() {
 
 check_python_packages() {
     echo "# Python user packages"
-    pip3 list -o --user
+    # For some reason different order of arguments makes pip crash on some
+    # systems… Not going to bother here.
+    pip3 list --user -o 2> /dev/null \
+        || pip3 list -o --user 2> /dev/null \
+        || echo "Failure…"
 }
 
 (( $+commands[nvim] )) && check_neovim
 (( $+commands[alacritty] )) && check_alacritty
 (( $+commands[cheat] )) && check_cheat
-check_python_packages
+(( $+commands[pip3] )) && check_python_packages
