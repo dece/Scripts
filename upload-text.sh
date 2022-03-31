@@ -34,7 +34,9 @@ cat << EOF > "$HTML_FILE"
     </style>
 </head>
 <body>
+<pre>
 $(cat "$1")
+</pre>
 </body>
 </html>
 EOF
