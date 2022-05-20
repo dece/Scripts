@@ -46,6 +46,20 @@ def list_bangs(config):
         print(f"- {handle} {name}")
 
 
+def run_rofi(config, input_text="", title="bang"):
+    rofi_path = config.get("rofi_path", "rofi")
+    completed_process = subprocess.run(
+        [rofi_path, "-dmenu", "-p", title],
+        text=True,
+        capture_output=True,
+        input=input_text
+    )
+    output = completed_process.stdout
+    if not output:
+        exit("Empty Rofi output.")
+    return output
+
+
 def open_bang(config, handle, query):
     for bang in config["bangs"]:
         if handle == bang["handle"]:
@@ -75,23 +89,17 @@ def main():
         list_bangs(config)
         return
 
-    rofi_path = config.get("rofi_path", "rofi")
     process_input = "\n".join(i["handle"] for i in config["bangs"]) + "\n"
-    completed_process = subprocess.run(
-        [rofi_path, "-dmenu", "-p", "bang"],
-        text=True,
-        capture_output=True,
-        input=process_input
-    )
-    output = completed_process.stdout
-    if not output:
-        exit("Empty Rofi output.")
-
+    output = run_rofi(config, input_text=process_input)
     parts = output.split(maxsplit=1)
-    if len(parts) != 2:
+    if len(parts) < 1:
         exit("Bad Rofi output.")
-
-    open_bang(config, *parts)
+    if len(parts) == 1:
+        handle = parts[0]
+        query = run_rofi(config, title=handle)
+    else:
+        handle, query = parts
+    open_bang(config, handle, query)
 
 
 if __name__ == "__main__":
