@@ -91,7 +91,10 @@ def main():
 def get_translations(lang, words):
     """Get translations for these words."""
     encoded_words = urllib.parse.quote(words)
-    response = requests.get(f"{URL}/{lang}/{encoded_words}")
+    try:
+        response = requests.get(f"{URL}/{lang}/{encoded_words}")
+    except requests.exceptions.RequestException:
+        exit("Could not connect to WordReference.")
     if response.status_code != 200:
         exit("Could not connect to WordReference.")
 
@@ -233,7 +236,10 @@ AUTOCOMP_URL = f"{URL}/2012/autocomplete/autocomplete.aspx"
 def get_suggestions(lang, words):
     """Show completion suggestions for these words."""
     params = {"dict": lang, "query": words}
-    response = requests.get(AUTOCOMP_URL, params=params)
+    try:
+        response = requests.get(AUTOCOMP_URL, params=params)
+    except requests.exceptions.RequestException:
+        exit("Could not connect to WordReference.")
     if response.status_code != 200:
         exit("Could not connect to WordReference.")
 
