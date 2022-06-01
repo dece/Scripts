@@ -67,7 +67,7 @@ def open_bang(config, handle, query):
     else:
         print("Unknown handle.")
         return
-    url = bang["url"].format(urllib.parse.quote(query))
+    url = bang["url"].format(urllib.parse.quote(query.strip()))
     webbrowser.open_new_tab(url)
 
 
