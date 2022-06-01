@@ -20,6 +20,12 @@ usage() {
 CONFIG_PATH="$HOME/.config/upload-text.conf"
 [ -f "$CONFIG_PATH" ] && . "$CONFIG_PATH"
 
+# Check for our environment variables.
+if [ ! -v REMOTE_DEST ] || [ ! -v REMOTE_WWW ] || [ ! -v REMOTE_URL ]; then
+    echo "You need to provide all the required environment variables."
+    exit
+fi
+
 # Generate a simple HTML page from the content.
 BASENAME="$(basename "$1")"
 HTML_FILE="$(mktemp)"
