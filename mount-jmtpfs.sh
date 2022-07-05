@@ -8,7 +8,7 @@ if ! command -v jmtpfs > /dev/null; then
     exit
 fi
 
-if [[ "$1" = "-u" ]]; then
+unmount_phones() {
     for mount_dir in /tmp/jmtpfs.*; do
         if [ -d "$mount_dir" ]; then
             umount "$mount_dir"
@@ -17,9 +17,19 @@ if [[ "$1" = "-u" ]]; then
             rm -rI "$mount_dir"
         fi
     done
-    exit
-fi
+}
+
+SHOW_MOUNT=
+while getopts "hus" OPTION; do
+    case $OPTION in
+        h) usage; exit 0 ;;
+        u) unmount_phones; exit 0 ;;
+        s) SHOW_MOUNT=true ;;
+        *) usage; exit 1 ;;
+    esac
+done
 
 mount_dir="$(mktemp -d -p /tmp jmtpfs.XXXXXXXXXX)"
 jmtpfs "$mount_dir"
 echo "Mount directory: $mount_dir"
+[[ "$SHOW_MOUNT" = true ]] && nohup open "$mount_dir" > /dev/null 2>&1
