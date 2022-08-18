@@ -28,9 +28,8 @@ import webbrowser
 
 def load_config(config_path=None):
     if config_path is None:
-        config_path = os.environ.get(
-            "ROFIBANGS_CONFIG_PATH",
-            os.path.expanduser("~/.config/rofibangs.json")
+        config_path = os.environ.get("ROFIBANGS_CONFIG_PATH") or os.path.expanduser(
+            "~/.config/rofibangs.json"
         )
     try:
         with open(config_path, "rt") as bangs_file:
@@ -52,7 +51,7 @@ def run_rofi(config, input_text="", title="bang"):
         [rofi_path, "-dmenu", "-p", title],
         text=True,
         capture_output=True,
-        input=input_text
+        input=input_text,
     )
     output = completed_process.stdout
     if not output:
@@ -73,12 +72,9 @@ def open_bang(config, handle, query):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-            "-c", "--config", help="path to JSON config file"
-    )
-    ap.add_argument(
-            "-l", "--list", action="store_true", help="show available bangs"
-    )
+    ap.add_argument("-c", "--config", help="path to JSON config file")
+    ap.add_argument("-l", "--list", action="store_true", help="show available bangs")
+    ap.add_argument("-b", "--bang", help="launch with this bang already set")
     args = ap.parse_args()
 
     config = load_config()
@@ -89,16 +85,19 @@ def main():
         list_bangs(config)
         return
 
-    process_input = "\n".join(i["handle"] for i in config["bangs"]) + "\n"
-    output = run_rofi(config, input_text=process_input)
-    parts = output.split(maxsplit=1)
-    if len(parts) < 1:
-        exit("Bad Rofi output.")
-    if len(parts) == 1:
-        handle = parts[0]
+    if handle := args.bang:
         query = run_rofi(config, title=handle)
     else:
-        handle, query = parts
+        process_input = "\n".join(i["handle"] for i in config["bangs"]) + "\n"
+        output = run_rofi(config, input_text=process_input)
+        parts = output.split(maxsplit=1)
+        if len(parts) < 1:
+            exit("Bad Rofi output.")
+        if len(parts) == 1:
+            handle = parts[0]
+            query = run_rofi(config, title=handle)
+        else:
+            handle, query = parts
     open_bang(config, handle, query)
 
 
