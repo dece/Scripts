@@ -7,11 +7,18 @@ want a Wikipedia article for "burger", or at least a much needed
 disambiguation…
 
 Config file example:
-    { "bangs": [ {
-        "handle": "w",
-        "name": "Wikipedia",
-        "url": "https://en.wikipedia.org/wiki/Special:Search?search={}&go=Go"
-    } ] }
+    {
+      "bangs": [
+        {
+          "handle": "w",
+          "name": "Wikipedia",
+          "url": "https://en.wikipedia.org/wiki/Special:Search?search={}&go=Go"
+        }
+      ]
+    }
+
+Optionally, a bang object can contain a "raw" key with a boolean value: if
+true, arguments are passed without being URL-encoded.
 
 By default this scripts attempts to load your config file from
 `~/.config/rofibangs.json`, but you can specify the ROFIBANGS_CONFIG_PATH
@@ -66,7 +73,10 @@ def open_bang(config, handle, query):
     else:
         print("Unknown handle.")
         return
-    url = bang["url"].format(urllib.parse.quote(query.strip()))
+    query = query.strip()
+    if not bang.get("raw", False):
+        query = urllib.parse.quote(query)
+    url = bang["url"].format(query)
     webbrowser.open_new_tab(url)
 
 
