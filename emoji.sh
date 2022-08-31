@@ -19,6 +19,7 @@ usage() {
     echo "  -l LIMIT  limit number of output lines"
     echo "  -u        unique result (equals -n and -l 1), no new line"
     echo "  -c        show code point"
+    echo "  -z        use fzf mode"
     echo "  -d        download UCD zip to create list file (requires curl)"
 }
 
@@ -39,7 +40,8 @@ HIDE_NAME=
 LIMIT=
 NO_NEW_LINE=
 SHOW_CP=
-while getopts "hdnl:uc" OPTION; do
+FZF_MODE=
+while getopts "hdnl:ucz" OPTION; do
     case $OPTION in
         h) usage; exit 0 ;;
         d) download_ucdxml; exit $? ;;
@@ -47,6 +49,7 @@ while getopts "hdnl:uc" OPTION; do
         l) LIMIT=$OPTARG ;;
         u) HIDE_NAME=true; LIMIT=1; NO_NEW_LINE=true ;;
         c) SHOW_CP=true ;;
+        z) FZF_MODE=true ;;
         *) usage; exit 1 ;;
     esac
 done
@@ -58,20 +61,33 @@ if [ ! -f "$LIST" ]; then
     exit 1
 fi
 
-line_id=0
-zcat "$LIST" | "$GREP" -i "$FILTER" | while read -r line; do
-    [ -n "$LIMIT" ] && (( line_id >= LIMIT )) && break
-    readarray -d ";" -t elements <<< "$line"
-    codepoint="${elements[0]}"
-    result="$(echo -e "\\U$codepoint")"
-    if [ "$HIDE_NAME" != true ]; then
-        name="${elements[1]}"
-        result="$result $(echo "$name" | tr '[:upper:]' '[:lower:]')"
+find_emojis() {
+    line_id=0
+    zcat "$LIST" | "$GREP" -i "$FILTER" | while read -r line; do
+        [ -n "$LIMIT" ] && (( line_id >= LIMIT )) && break
+        readarray -d ";" -t elements <<< "$line"
+        codepoint="${elements[0]}"
+        result="$(echo -e "\\U$codepoint")"
+        if [ "$HIDE_NAME" != true ]; then
+            name="${elements[1]}"
+            result="$result $(echo "$name" | tr '[:upper:]' '[:lower:]')"
+        fi
+        if [ "$SHOW_CP" = true ]; then
+            result="$result (U+$codepoint)"
+        fi
+        [ "$NO_NEW_LINE" = true ] && echo_opt="-n" || echo_opt=""
+        echo "$echo_opt" "$result"
+        line_id=$(( line_id + 1 ))
+    done
+}
+
+if [ "$FZF_MODE" = true ]; then
+    result="$(find_emojis | fzf)"
+    echo "$result"
+    if command -v xclip > /dev/null; then
+        echo -n "$(awk '{print $1}' <<< "$result")" | xclip
+        echo "(copied to X clipboard)"
     fi
-    if [ "$SHOW_CP" = true ]; then
-        result="$result (U+$codepoint)"
-    fi
-    [ "$NO_NEW_LINE" = true ] && echo_opt="-n" || echo_opt=""
-    echo "$echo_opt" "$result"
-    line_id=$(( line_id + 1 ))
-done
+else
+    find_emojis
+fi
