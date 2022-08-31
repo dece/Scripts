@@ -7,7 +7,8 @@
 # Made with 💖 by dece. s/o to mon loulou, the bash samurai. License: WTFPLv2.
 
 UCD_URL="https://www.unicode.org/Public/UCD/latest/ucdxml/ucd.all.flat.zip"
-UCD="$HOME/.local/share/emoji/ucd.all.flat.zip"
+DIR="$HOME/.local/share/emoji"
+LIST="$DIR/emojis.txt.gz"
 GREP="rg"
 
 usage() {
@@ -18,15 +19,20 @@ usage() {
     echo "  -l LIMIT  limit number of output lines"
     echo "  -u        unique result (equals -n and -l 1), no new line"
     echo "  -c        show code point"
-    echo "  -d        download UCD zip (requires curl)"
+    echo "  -d        download UCD zip to create list file (requires curl)"
 }
 
 [ $# -eq 0 ] && usage && exit
 
 download_ucdxml() {
-    directory="$(dirname "$UCD")"
-    [ ! -d "$directory" ] && mkdir -p "$directory"
-    curl -L -o "$UCD" "$UCD_URL"
+    [ ! -d "$DIR" ] && mkdir -p "$DIR"
+    unc_list="${LIST%.gz}"
+    curl -L "$UCD_URL" | zcat | "$GREP" 'Emoji="Y"' | while read -r line; do
+        codepoint="$(echo "$line" | sed -E 's/.* cp="([0-9A-F]+)".*/\1/g')"
+        name="$(echo "$line" | sed -E 's/.* na="([^"]+)".*/\1/g')"
+        echo "$codepoint;$name" >> "$unc_list"
+    done
+    gzip "$unc_list"
 }
 
 HIDE_NAME=
@@ -47,22 +53,19 @@ done
 shift $(( OPTIND - 1 ))
 FILTER="$*"
 
-if [ ! -f "$UCD" ]; then
-    echo "Can't find UCD archive at $UCD. Use -d to download it!"
+if [ ! -f "$LIST" ]; then
+    echo "Can't find list file at $LIST. Use -d to download it!"
     exit 1
 fi
 
-search_chars() {
-    zcat "$UCD" | "$GREP" 'Emoji="Y"' | "$GREP" -i "na.?=\"[^\"]*$1[^\"]*\""
-}
-
 line_id=0
-search_chars "$FILTER" | while read -r line; do
+zcat "$LIST" | "$GREP" -i "$FILTER" | while read -r line; do
     [ -n "$LIMIT" ] && (( line_id >= LIMIT )) && break
-    codepoint="$(echo "$line" | sed -E 's/.* cp="([0-9A-F]+)".*/\1/g')"
+    readarray -d ";" -t elements <<< "$line"
+    codepoint="${elements[0]}"
     result="$(echo -e "\\U$codepoint")"
     if [ "$HIDE_NAME" != true ]; then
-        name="$(echo "$line" | sed -E 's/.* na="([^"]+)".*/\1/g')"
+        name="${elements[1]}"
         result="$result $(echo "$name" | tr '[:upper:]' '[:lower:]')"
     fi
     if [ "$SHOW_CP" = true ]; then
