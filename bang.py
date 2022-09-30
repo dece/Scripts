@@ -21,7 +21,7 @@ Optionally, a bang object can contain a "raw" key with a boolean value: if
 true, arguments are passed without being URL-encoded.
 
 By default this scripts attempts to load your config file from
-`~/.config/rofibangs.json`, but you can specify the ROFIBANGS_CONFIG_PATH
+`~/.config/bangs.json`, but you can specify the BANGS_CONFIG_PATH
 environment variable or pass the path through the -c command-line option.
 """
 
@@ -35,8 +35,8 @@ import webbrowser
 
 def load_config(config_path=None):
     if config_path is None:
-        config_path = os.environ.get("ROFIBANGS_CONFIG_PATH") or os.path.expanduser(
-            "~/.config/rofibangs.json"
+        config_path = os.environ.get("BANGS_CONFIG_PATH") or os.path.expanduser(
+            "~/.config/bangs.json"
         )
     try:
         with open(config_path, "rt") as bangs_file:
@@ -84,7 +84,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-c", "--config", help="path to JSON config file")
     ap.add_argument("-l", "--list", action="store_true", help="show available bangs")
-    ap.add_argument("-b", "--bang", help="launch with this bang already set")
+    ap.add_argument("-b", "--bang", nargs="+", help="launch with this bang already set")
     args = ap.parse_args()
 
     config = load_config()
@@ -95,8 +95,12 @@ def main():
         list_bangs(config)
         return
 
-    if handle := args.bang:
-        query = run_rofi(config, title=handle)
+    if bang_args := args.bang:
+        handle = bang_args[0]
+        if bang_args[1:]:
+            query = " ".join(bang_args[1:])
+        else:
+            query = run_rofi(config, title=handle)
     else:
         process_input = "\n".join(i["handle"] for i in config["bangs"]) + "\n"
         output = run_rofi(config, input_text=process_input)
