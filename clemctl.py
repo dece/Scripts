@@ -2,6 +2,7 @@
 """Control Clementine from the command line using dbus."""
 
 import argparse
+import sys
 
 import dbus  # type: ignore
 
@@ -37,6 +38,8 @@ CLEM_PLAYER_NAME = "org.mpris.MediaPlayer2.Player"
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="do not print errors")
 
     action_group = parser.add_mutually_exclusive_group()
     action_group.add_argument("--play", action="store_true")
@@ -51,14 +54,22 @@ def main():
     pos_parser = subparsers.add_parser("position", help="get track position")
     pos_parser.add_argument("-f", "--format", help="position format")
     pos_parser.set_defaults(func=handle_position_command)
+    status_parser = subparsers.add_parser("status", help="get playback status")
+    status_parser.set_defaults(func=handle_status_command)
 
     args = parser.parse_args()
-    if hasattr(args, "func"):
-        args.func(args)
-        return
 
-    bus = dbus.SessionBus()
-    clem_object = get_clementine_object(bus)
+    try:
+        if hasattr(args, "func"):
+            args.func(args)
+            return
+        bus = dbus.SessionBus()
+        clem_object = get_clementine_object(bus)
+    except dbus.exceptions.DBusException:
+        if not args.quiet:
+            sys.stderr.write("Can't get Clementine object.\n")
+        sys.exit(1)
+
     if args.play:
         get_player_interface(clem_object).Play()
     elif args.play_pause:
@@ -103,6 +114,13 @@ def get_position(bus):
     timestamp_min = (timestamp_sec // 60) % 60
     timestamp_sec = timestamp_sec % 60
     return (timestamp_h, timestamp_min, timestamp_sec)
+
+
+def handle_status_command(_args):
+    bus = dbus.SessionBus()
+    clem_object = get_clementine_object(bus)
+    status = clem_object.Get(CLEM_PLAYER_NAME, "PlaybackStatus")
+    print(status)
 
 
 if __name__ == "__main__":
