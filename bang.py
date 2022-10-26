@@ -35,8 +35,9 @@ import webbrowser
 
 def load_config(config_path=None):
     if config_path is None:
-        config_path = os.environ.get("BANGS_CONFIG_PATH") or os.path.expanduser(
-            "~/.config/bangs.json"
+        config_path = (
+            os.environ.get("BANGS_CONFIG_PATH")
+            or os.path.expanduser("~/.config/bangs.json")
         )
     try:
         with open(config_path, "rt") as bangs_file:
@@ -49,7 +50,7 @@ def list_bangs(config):
     for item in config["bangs"]:
         name = item["name"]
         handle = item["handle"]
-        print(f"- {handle} {name}")
+        print(f"- {handle}: {name}")
 
 
 def run_rofi(config, input_text="", title="bang"):
@@ -67,10 +68,9 @@ def run_rofi(config, input_text="", title="bang"):
 
 
 def open_bang(config, handle, query):
-    for bang in config["bangs"]:
-        if handle == bang["handle"]:
-            break
-    else:
+    try:
+        bang = next(bang for bang in config["bangs"] if handle == bang["handle"])
+    except StopIteration:
         print("Unknown handle.")
         return
     query = query.strip()
@@ -85,6 +85,7 @@ def main():
     ap.add_argument("-c", "--config", help="path to JSON config file")
     ap.add_argument("-l", "--list", action="store_true", help="show available bangs")
     ap.add_argument("-b", "--bang", nargs="+", help="launch with this bang already set")
+    ap.add_argument("-f", "--queries-file", help="file with one bang argument per line")
     args = ap.parse_args()
 
     config = load_config()
@@ -95,24 +96,36 @@ def main():
         list_bangs(config)
         return
 
+    queries = []
+    if listfile := args.queries_file:
+        try:
+            with open(listfile, "rt") as file:
+                queries = [line.rstrip() for line in file.readlines()]
+        except OSError:
+            exit("Can't load queries file.")
+
+    # If a bang is specified on the command line, use it, optionally with its args.
     if bang_args := args.bang:
         handle = bang_args[0]
         if bang_args[1:]:
-            query = " ".join(bang_args[1:])
-        else:
-            query = run_rofi(config, title=handle)
+            queries.append(" ".join(bang_args[1:]))
+    # Else show a Rofi with the list of available bangs.
     else:
         process_input = "\n".join(i["handle"] for i in config["bangs"]) + "\n"
         output = run_rofi(config, input_text=process_input)
         parts = output.split(maxsplit=1)
         if len(parts) < 1:
             exit("Bad Rofi output.")
-        if len(parts) == 1:
-            handle = parts[0]
-            query = run_rofi(config, title=handle)
-        else:
-            handle, query = parts
-    open_bang(config, handle, query)
+        handle = parts[0]
+        if len(parts) > 1:
+            queries.append(parts[1])
+
+    # If no queries were obtained during options parsing, show Rofi now to get a single query.
+    if not queries:
+        queries.append(run_rofi(config, title=handle))
+
+    for query in queries:
+        open_bang(config, handle, query)
 
 
 if __name__ == "__main__":
